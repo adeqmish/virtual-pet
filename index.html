@@ -263,7 +263,7 @@
     state.poop=0; state.poopProgress=0; state.lastPoopAt=Date.now();
     state.dead=false; state.friend=0; state.lastInteract=Date.now();
 
-    flash(Hatched! ${state.gender} Tamabotchi (${state.color}).);
+    flash(`Hatched! ${state.gender} Tamabotchi (${state.color}).`);
     render(); save();
   }
 
@@ -310,7 +310,8 @@
     if (now>=state.leaveAt && !state.homePendingUntil){
       const canAsk = state.friend>=700;
       state.homePendingUntil = now+60000;
-      flash(canAsk?'I’m thinking to go home… (Ask to Stay in 60s) 🙏':'I’m going home soon… (60s)'); render(); save();
+      flash(canAsk?'I’m thinking to go home… (Ask to Stay in 60s) 🙏':'I’m going home soon… (60s)');
+      render(); save();
     }
   }
 
@@ -362,7 +363,7 @@
     } else {
       state.hunger = clamp(state.hunger + rates.hunger*dt);
       state.energy = clamp(state.energy + rates.energy*dt);
-      state.happy  = clamp(state.happy  + rates.happy*dt);
+      state.happy  = clamp(state.happy + rates.happy*dt);
 
       if (state.hunger>80) state.happy = clamp(state.happy - 0.02*dt*(state.hunger-80));
       if (state.energy<20) state.happy = clamp(state.happy - 0.03*dt*(20-state.energy));
@@ -469,12 +470,12 @@
     state.hunger = clamp(state.hunger - 12); state.happy = clamp(state.happy + 10);
     const fav = Math.random()<0.5 ? state.favSnack : null; const gain = fav?20:10; state.friend += gain;
     addPoopProgress(POOP_CFG.SNACK_PROGRESS);
-    markInteract(); flash(fav?Favourite snack! (+${gain} Friendship) 🍪✨:'Sedapnya snack! 🍪'); render(); save();
+    markInteract(); flash(fav ? `Favourite snack! (+${gain} Friendship) 🍪✨` : 'Sedapnya snack! 🍪'); render(); save();
   }
   function play(){ const [m,ok]=canPlay(); if(!ok) return refuse(el.playBtn,m);
     state.happy = clamp(state.happy + 18); state.energy = clamp(state.energy - 12); state.hunger = clamp(state.hunger + 8);
     const fav = Math.random()<0.5 ? state.favToy : null; const gain = fav?20:10; state.friend += gain;
-    markInteract(); flash(fav?Favourite toy! (+${gain} Friendship) 🪀✨:'Seronok! 🪀'); render(); save();
+    markInteract(); flash(fav ? `Favourite toy! (+${gain} Friendship) 🪀✨` : 'Seronok! 🪀'); render(); save();
   }
   function petAction(){ const [m,ok]=canPet(); if(!ok) return refuse(el.petBtn,m);
     ensurePetWindow();
@@ -482,7 +483,7 @@
     const friendGain = (state.petsThisWindow < PET_CFG.FRIEND_REWARDS.length) ? PET_CFG.FRIEND_REWARDS[idx] : 0;
     const happyGain  = (state.petsThisWindow < PET_CFG.HAPPY_REWARDS.length)  ? PET_CFG.HAPPY_REWARDS[idx]  : 1;
     state.happy = clamp(state.happy + happyGain);
-    if (friendGain>0){ state.friend += friendGain; flash(Pat pat. 🤚💖 (+${friendGain} Friendship)); }
+    if (friendGain>0){ state.friend += friendGain; flash(`Pat pat. 🤚💖 (+${friendGain} Friendship)`); }
     else { flash(PET_CFG.AFTER_MSG); }
     state.petsThisWindow += 1;
     markInteract(); render(); save();
@@ -495,7 +496,7 @@
       state.happy = clamp(state.happy + CLEAN_REWARD.happy*cleaned);
       state.energy = clamp(state.energy + CLEAN_REWARD.energy*cleaned);
       state.friend += CLEAN_REWARD.friend*cleaned;
-      flash(Bersih! ✨ (+${CLEAN_REWARD.happy*cleaned} Happy, +${CLEAN_REWARD.friend*cleaned} Friendship));
+      flash(`Bersih! ✨ (+${CLEAN_REWARD.happy*cleaned} Happy, +${CLEAN_REWARD.friend*cleaned} Friendship)`);
     } else {
       flash('Dah bersih 👍');
     }
@@ -576,10 +577,10 @@
       el.status.textContent = 'Egg: hatching in '+secLeftStr(left)+'…';
     } else if (['baby','child','teen'].includes(state.stage)){
       const dur=stageDurationSec(state.stage), left = scaleSeconds(dur)*1000 - (Date.now()-state.stageStart);
-      el.nextEvent.textContent = Grow to ${state.stage==='baby'?'Child':state.stage==='child'?'Teen':'Adult'} in ${secLeftStr(left)};
+      el.nextEvent.textContent = `Grow to ${state.stage==='baby'?'Child':state.stage==='child'?'Teen':'Adult'} in ${secLeftStr(left)}`;
     } else if (state.stage==='adult'){
-      if (state.homePendingUntil){ const left=state.homePendingUntil-Date.now(); el.nextEvent.textContent=Going home in ${secLeftStr(left)}; }
-      else if (state.leaveAt){ const left=state.leaveAt-Date.now(); el.nextEvent.textContent=May go home in ${secLeftStr(left)}; }
+      if (state.homePendingUntil){ const left=state.homePendingUntil-Date.now(); el.nextEvent.textContent=`Going home in ${secLeftStr(left)}`; }
+      else if (state.leaveAt){ const left=state.leaveAt-Date.now(); el.nextEvent.textContent=`May go home in ${secLeftStr(left)}`; }
       else el.nextEvent.textContent='Staying with you ❤️';
     } else if (state.stage==='gone'){ el.nextEvent.textContent='Gone home. Start new egg with Reset.'; }
     else el.nextEvent.textContent='-';
@@ -589,7 +590,7 @@
 
     if (state.dead){ el.status.textContent='Your pet has passed away. Tekan "Reset" untuk generasi baru.'; setButtonsDisabled(true); el.resetBtn.disabled=false; }
     else if (state.stage==='gone'){ el.status.textContent='Your pal went home. Tekan "Reset" untuk generasi baru.'; setButtonsDisabled(true); el.resetBtn.disabled=false; }
-    else if (!state.sleeping && !['egg','gone'].includes(state.stage)){ el.status.textContent ||= Poop: ${Math.round(state.poop)} • Jaga baik-baik ya!; setButtonsDisabled(false); }
+    else if (!state.sleeping && !['egg','gone'].includes(state.stage)){ el.status.textContent ||= `Poop: ${Math.round(state.poop)} • Jaga baik-baik ya!`; setButtonsDisabled(false); }
   }
 
   el.feedBtn.addEventListener('click', feed);
@@ -624,20 +625,18 @@
   }
 
   render();
-  if (!state || !state.stage || state.stage==='gone') {
+  if (state.stage === 'egg') {
+    (function ensureEggHatch(){
+      const total = scaleSeconds(DUR.EGG_HATCH) * 1000;
+      const left = total - (Date.now() - state.eggStart);
+      if (left <= 0) hatchEgg(); else scheduleEggHatch();
+    })();
+  } else if (state.stage === 'gone' || !state.stage) {
     startEgg();
   } else {
     flash('Welcome back! 👋');
     save(); render();
   }
-
-  (function ensureEggHatch(){
-    if (state.stage === 'egg') {
-      const total = scaleSeconds(DUR.EGG_HATCH) * 1000;
-      const left = total - (Date.now() - state.eggStart);
-      if (left <= 0) hatchEgg(); else scheduleEggHatch();
-    }
-  })();
 
   setInterval(tick, 1000);
 })();
