@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>My Virtual Pet</title>
+<style>
+  :root { --bg:#0f172a; --card:#111827; --text:#e5e7eb; --muted:#9ca3af; --accent:#22c55e; --warn:#f59e0b; --danger:#ef4444; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background: radial-gradient(1200px 600px at 50% -200px, #1f2937, var(--bg)); color:var(--text); display:flex; min-height:100dvh; }
+  .wrap { margin:auto; width:min(900px, 100%); padding:24px; }
+  .card { background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01)); border:1px solid rgba(255,255,255,.08);
+          border-radius:16px; padding:20px; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+  h1 { margin:0 0 6px; font-size: clamp(20px, 3.4vw, 28px); }
+  .sub { color:var(--muted); margin:0 0 16px; font-size: 14px; }
+  .grid { display:grid; grid-template-columns: 1.2fr .8fr; gap:16px; }
+  @media (max-width:820px){ .grid{grid-template-columns:1fr} }
+  .panel { background:#0b1220; border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:16px; }
+  .pet { display:grid; grid-template-columns: 1fr; place-items:center; gap:6px;
+         background:#0b1220; border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:18px; margin:10px 0 16px; }
+  .pet-emoji { font-size: clamp(72px, 18vw, 120px); line-height:1; filter: drop-shadow(0 8px 20px rgba(0,0,0,.5)); transition: transform .2s ease, opacity .2s ease; }
+  .stats { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; width:100%; }
+  .bar { background:#0b1020; border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:8px; }
+  .bar label { display:flex; justify-content:space-between; font-size:13px; color:var(--muted); margin-bottom:6px; }
+  .meter { height:10px; background:#111827; border-radius:6px; overflow:hidden; }
+  .meter > i { display:block; height:100%; width:50%; background:linear-gradient(90deg, #4ade80, #22c55e); transition:width .3s ease; }
+  .meter.warn > i { background:linear-gradient(90deg, #fde047, #f59e0b); }
+  .meter.danger > i { background:linear-gradient(90deg, #fda4af, #ef4444); }
+  .row { display:flex; flex-wrap:wrap; gap:10px; margin:12px 0 0; }
+  button { appearance:none; border:1px solid rgba(255,255,255,.12); background:#0e1628; color:#e5e7eb;
+    padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:600; transition:transform .05s ease, background .2s, opacity .2s; }
+  button:hover { background:#12203a; }
+  button:active { transform: translateY(1px); }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  .accent { border-color: rgba(34,197,94,.5); }
+  .warnBtn { border-color: rgba(245,158,11,.5); }
+  .dangerBtn { border-color: rgba(239,68,68,.5); }
+  .footer { display:flex; justify-content:space-between; align-items:center; color:var(--muted); font-size:12px; margin-top:10px; }
+  .tiny { font-size:12px; color:var(--muted); }
+  .pill { padding:2px 8px; border:1px solid rgba(255,255,255,.12); border-radius:999px; }
+  .dead .pet-emoji { transform: scale(.96); opacity:.85; }
+  .dead .meter > i { background:linear-gradient(90deg, #9ca3af, #6b7280) !important; }
+  .info { font-size:13px; color:var(--muted); line-height:1.5; }
+  .info b { color:#e5e7eb; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid rgba(255,255,255,.14); font-size:12px; }
+  @keyframes shake { 10%,90%{transform:translateX(-1px)} 20%,80%{transform:translateX(2px)} 30%,50%,70%{transform:translateX(-4px)} 40%,60%{transform:translateX(4px)} }
+  .shake { animation: shake .35s; }
+  .warnText{ color:#fde68a }
+  .okText{ color:#86efac }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card" id="card">
+      <h1>My Virtual Pet</h1>
+      <p class="sub">Pintasan: <span class="pill">F</span> Feed, <span class="pill">N</span> Snack, <span class="pill">P</span> Play, <span class="pill">T</span> Pet, <span class="pill">S</span> Sleep.</p>
+
+      <div class="grid">
+        <div>
+          <div class="pet">
+            <div id="petEmoji" class="pet-emoji" aria-live="polite">🥚</div>
+
+            <div class="stats">
+              <div class="bar">
+                <label>Hunger <span id="hungerVal">0</span></label>
+                <div class="meter" id="hungerMeter"><i style="width:0%"></i></div>
+              </div>
+              <div class="bar">
+                <label>Energy <span id="energyVal">0</span></label>
+                <div class="meter" id="energyMeter"><i style="width:0%"></i></div>
+              </div>
+              <div class="bar">
+                <label>Happiness <span id="happyVal">0</span></label>
+                <div class="meter" id="happyMeter"><i style="width:0%"></i></div>
+              </div>
+            </div>
+
+            <div class="row">
+              <button class="accent" id="feedBtn">🍗 Feed</button>
+              <button class="accent" id="snackBtn">🍪 Snack</button>
+              <button class="warnBtn" id="playBtn">🪀 Play</button>
+              <button id="petBtn">🤚 Pet</button>
+              <button class="dangerBtn" id="sleepBtn">😴 Sleep</button>
+              <button id="cleanBtn">🧽 Clean</button>
+              <button id="sendHomeBtn" title="Adult only">🏠 Send Home</button>
+              <button id="askStayBtn" title="Adult only (Best Pals)">🙏 Ask to Stay</button>
+              <button id="resetBtn">🗑️ Reset</button>
+              <button id="hardResetBtn" class="dangerBtn" title="Padam save & cache game ini">🧨 Hard Reset</button>
+            </div>
+
+            <p class="tiny" id="status">Egg: hatching in 60s…</p>
+          </div>
+
+          <div class="panel">
+            <div class="info">
+              <div>Stage: <b id="stageText">Egg</b> • Gender: <b id="genderText">-</b> • Color: <b id="colorText">-</b> • Gen: <b id="genText">1</b></div>
+              <div>Friendship: <b id="friendVal">0</b> (<span id="friendLevel">Normal</span>) • Favs: Snack=<b id="favSnack">?</b>, Toy=<b id="favToy">?</b></div>
+              <div>Next event: <span id="nextEvent">-</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="info">
+            <div class="badge">Design Rules</div>
+            <ul>
+              <li>Egg hatch: <b>1 min</b>.</li>
+              <li>Lifespan: Baby <b>1h</b> → Child <b>24h</b> → Teen <b>36h</b> → Adult <b>4–5 days then goes home</b> (indefinite if cared; can ask to stay at <b>Best Pals</b>).</li>
+              <li>Friendship: Normal 0 • Friendly 100 • Friends 200 • Good Buddies 400 • Best Pals 700.</li>
+              <li>Child evolution by Baby HP (0–40) from Happiness bars.</li>
+              <li>Auto Sleep bila energy rendah; emoji 😴 semasa tidur; auto-bangun sendiri.</li>
+              <li>Button limits, death on extreme neglect (ada grace 30 min in-game).</li>
+            </ul>
+          </div>
+          <div class="info okText">Tip: laras <b>TIME_SCALE</b> untuk test cepat.</div>
+        </div>
+      </div>
+
+      <div class="footer">
+        <span>Auto-save: <b id="saveState">OK</b></span>
+        <span id="clock"></span>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const APP_VERSION = 'v1.13';
+
+  const TIME_SCALE = 1;
+  const SEC = n => n, MIN = n => n*60, HOUR = n => n*3600, DAY = n => n*86400;
+
+  const DUR = { EGG_HATCH: MIN(1), BABY: HOUR(1), CHILD: DAY(1), TEEN: HOUR(36), ADULT_LEAVE_MIN: DAY(4), ADULT_LEAVE_MAX: DAY(5) };
+
+  const FRIEND_LEVELS = [
+    {name:'Normal',min:0},{name:'Friendly',min:100},{name:'Friends',min:200},{name:'Good Buddies',min:400},{name:'Best Pals',min:700},
+  ];
+
+  const LIMITS = {
+    FEED_MIN_HUNGER: 10, PLAY_MIN_ENERGY: 15, PLAY_MAX_HUNGER: 85, PLAY_MAX_HAPPY: 95,
+    SLEEP_MAX_ENERGY: 90, SLEEP_MAX_HUNGER: 90, CLEAN_MIN_POOP: 1
+  };
+
+  const SLEEP_CFG = {
+    AUTO_ENERGY_MAX: 15, AUTO_HUNGER_MAX: 85, WAKE_ENERGY: 90, WAKE_HUNGER_MAX: 90, MAX_DURATION_S: 60,
+    energyGain: 0.6, hungerGain: 0.05, happyGain: 0.03
+  };
+
+  const PET_CFG = { WINDOW: MIN(10), FRIEND_REWARDS: [5,3,2], HAPPY_REWARDS: [8,4,2], AFTER_MSG: 'Tak nak manja sangat sekarang. 😅' };
+
+  const DANGER = { HUNGER: 98, ENERGY: 2, HAPPY: 2, GRACE_S: MIN(30) };
+
+  const POOP_CFG = { THRESHOLD: 100, FEED_PROGRESS: 55, SNACK_PROGRESS: 35, PASSIVE_PER_MIN: 4, MIN_INTERVAL_S: MIN(5), MAX_PILES: 10 };
+  const CLEAN_REWARD = { happy: 3, friend: 2, energy: 1 };
+
+  const DEFAULT = {
+    stage:'egg', gender:null, color:null, gen:1,
+    hunger:0, energy:0, happy:0, poop:0, poopProgress:0, lastPoopAt: Date.now(),
+    dead:false, sleeping:false, sleepStart:0,
+    friend:0,
+    favSnack:null, favToy:null,
+    eggStart: Date.now(), stageStart: Date.now(), bornAt:null,
+    leaveAt:null, homePendingUntil:null,
+    last: Date.now(),
+    lastInteract: Date.now(),
+    petWindowStart: null, petsThisWindow: 0,
+    danger: { hunger:0, energy:0, happy:0 }
+  };
+
+  const LS_KEYS = { SAVE:'tama', PREV_GENDER:'tama_prev_gender', VERSION:'tama_version' };
+
+  try{
+    const v = localStorage.getItem(LS_KEYS.VERSION);
+    if (v !== APP_VERSION){
+      localStorage.removeItem(LS_KEYS.SAVE);
+      localStorage.setItem(LS_KEYS.VERSION, APP_VERSION);
+    }
+  }catch{}
+
+  let state = load() || {...DEFAULT};
+  if (!state.eggStart) state.eggStart = Date.now();
+  if (!state.stageStart) state.stageStart = Date.now();
+  if (!('lastInteract' in state)) state.lastInteract = Date.now();
+  if (!state.danger) state.danger = {hunger:0, energy:0, happy:0};
+
+  const el = {
+    card: document.getElementById('card'),
+    pet: document.getElementById('petEmoji'),
+    hungerVal: document.getElementById('hungerVal'),
+    energyVal: document.getElementById('energyVal'),
+    happyVal: document.getElementById('happyVal'),
+    hungerMeter: document.getElementById('hungerMeter').firstElementChild,
+    energyMeter: document.getElementById('energyMeter').firstElementChild,
+    happyMeter: document.getElementById('happyMeter').firstElementChild,
+    hungerWrap: document.getElementById('hungerMeter'),
+    energyWrap: document.getElementById('energyMeter'),
+    happyWrap: document.getElementById('happyMeter'),
+    status: document.getElementById('status'),
+    clock: document.getElementById('clock'),
+    save: document.getElementById('saveState'),
+
+    feedBtn: document.getElementById('feedBtn'),
+    snackBtn: document.getElementById('snackBtn'),
+    playBtn: document.getElementById('playBtn'),
+    petBtn: document.getElementById('petBtn'),
+    sleepBtn: document.getElementById('sleepBtn'),
+    cleanBtn: document.getElementById('cleanBtn'),
+    sendHomeBtn: document.getElementById('sendHomeBtn'),
+    askStayBtn: document.getElementById('askStayBtn'),
+    resetBtn: document.getElementById('resetBtn'),
+    hardResetBtn: document.getElementById('hardResetBtn'),
+
+    stageText: document.getElementById('stageText'),
+    genderText: document.getElementById('genderText'),
+    colorText: document.getElementById('colorText'),
+    genText: document.getElementById('genText'),
+    friendVal: document.getElementById('friendVal'),
+    friendLevel: document.getElementById('friendLevel'),
+    favSnack: document.getElementById('favSnack'),
+    favToy: document.getElementById('favToy'),
+    nextEvent: document.getElementById('nextEvent'),
+  };
+
+  const clamp = (n,a=0,b=100)=> Math.max(a, Math.min(b, n));
+  function save(){ try{ localStorage.setItem(LS_KEYS.SAVE, JSON.stringify(state)); el.save.textContent='OK'; }catch{ el.save.textContent='OFF'; } }
+  function load(){ try{ return JSON.parse(localStorage.getItem(LS_KEYS.SAVE)); }catch{ return null; } }
+  function setButtonsDisabled(disabled){ [el.feedBtn, el.snackBtn, el.playBtn, el.petBtn, el.sleepBtn, el.cleanBtn].forEach(b=> b.disabled=disabled); }
+  function secLeftStr(ms){ const s = Math.max(0, Math.ceil(ms/1000)); return s+'s'; }
+  function friendLevelName(v){ let name=FRIEND_LEVELS[0].name; for(const lvl of FRIEND_LEVELS){ if (v>=lvl.min) name=lvl.name; } return name; }
+  const rnd=(a,b)=>Math.random()*(b-a)+a, pick=arr=>arr[Math.floor(Math.random()*arr.length)];
+  function markInteract(){ state.lastInteract = Date.now(); }
+  const scaleSeconds = sec => sec / TIME_SCALE;
+  const stageDurationSec = s => s==='baby'?DUR.BABY : s==='child'?DUR.CHILD : s==='teen'?DUR.TEEN : null;
+
+  let eggHatchTO = null;
+
+  function startEgg(){
+    state = {...DEFAULT, gen: state.gen||1, eggStart: Date.now(), stageStart: Date.now(), last: Date.now()};
+    el.pet.textContent='🥚';
+    flash('Egg: hatching in 60s…');
+    save(); render(); scheduleEggHatch();
+  }
+
+  function scheduleEggHatch(){
+    if (!state || state.stage !== 'egg') return;
+    if (eggHatchTO) { clearTimeout(eggHatchTO); eggHatchTO = null; }
+    const total = scaleSeconds(DUR.EGG_HATCH) * 1000;
+    const elapsed = Date.now() - state.eggStart;
+    let left = Math.max(0, total - elapsed);
+    if (!isFinite(left) || left > total*10) left = total;
+    eggHatchTO = setTimeout(()=>{ if (state.stage === 'egg') hatchEgg(); }, left);
+  }
+
+  function hatchEgg(){
+    if (eggHatchTO) { clearTimeout(eggHatchTO); eggHatchTO = null; }
+    state.gender   = Math.random() < 0.5 ? 'Male' : 'Female';
+    state.color    = pick(['Blue','Green','Pink']);
+    state.favSnack = pick(['Cookie','Milk','Fruit']);
+    state.favToy   = pick(['Yo-yo','Ball','Blocks']);
+
+    state.stage='baby'; state.stageStart=Date.now(); state.bornAt=Date.now();
+    state.hunger=50; state.energy=50; state.happy=50;
+    state.poop=0; state.poopProgress=0; state.lastPoopAt=Date.now();
+    state.dead=false; state.friend=0; state.lastInteract=Date.now();
+
+    flash(Hatched! ${state.gender} Tamabotchi (${state.color}).);
+    render(); save();
+  }
+
+  function progressTo(next){
+    state.stage=next; state.stageStart=Date.now();
+    if (next==='adult'){
+      const offset=rnd(DUR.ADULT_LEAVE_MIN, DUR.ADULT_LEAVE_MAX);
+      state.leaveAt = Date.now()+scaleSeconds(offset)*1000;
+      flash('Adult stage! ❤️');
+    } else {
+      flash('Grew to '+next+'! 🌱');
+    }
+    render(); save();
+  }
+
+  function maybeProgressStages(){
+    if (state.stage==='egg'){
+      const total = scaleSeconds(DUR.EGG_HATCH);
+      const elapsed = (Date.now()-state.eggStart)/1000;
+      if (elapsed >= total) { hatchEgg(); }
+      return;
+    }
+    const dur=stageDurationSec(state.stage); if (!dur) return;
+    const elapsed=(Date.now()-state.stageStart)/1000;
+    if (elapsed>=scaleSeconds(dur)){
+      if (state.stage==='baby'){
+        const bars=Math.max(0, Math.min(8, Math.floor(state.happy/12.5)));
+        const HP=Math.min(40, bars*5); state.childHP=HP;
+        state.childForm = (state.gender==='Male') ? (HP>=30?'P-Tomatchi':(HP>=10?'Fuyofuyotchi':'Mokumokutchi'))
+                                                  : (HP>=30?'Tantotchi':(HP>=10?'Chiroritchi':'Mimitamatchi'));
+        progressTo('child');
+      } else if (state.stage==='child'){ state.teenForm='(TBD)'; progressTo('teen'); }
+      else if (state.stage==='teen'){ state.adultForm='(TBD)'; progressTo('adult'); }
+    }
+  }
+
+  function checkAdultGoHome(){
+    if (state.stage!=='adult' || state.dead) return;
+    if (!state.leaveAt) return;
+    const now=Date.now();
+    if (state.homePendingUntil && now>=state.homePendingUntil){
+      state.stage='gone'; flash('Your pal went home. 👋'); setButtonsDisabled(true); save(); render(); return;
+    }
+    if (now>=state.leaveAt && !state.homePendingUntil){
+      const canAsk = state.friend>=700;
+      state.homePendingUntil = now+60000;
+      flash(canAsk?'I’m thinking to go home… (Ask to Stay in 60s) 🙏':'I’m going home soon… (60s)'); render(); save();
+    }
+  }
+
+  function addPoopProgress(p){ state.poopProgress = Math.max(0, Math.min(1000, (state.poopProgress||0) + p)); }
+  function maybeSpawnPoop(nowMs){
+    if (state.stage==='egg' || state.stage==='gone') return;
+    if (state.poop >= POOP_CFG.MAX_PILES) return;
+    const since = (nowMs - (state.lastPoopAt||0)) / 1000;
+    if (state.poopProgress >= POOP_CFG.THRESHOLD && since >= scaleSeconds(POOP_CFG.MIN_INTERVAL_S)){
+      state.poop = Math.min(POOP_CFG.MAX_PILES, state.poop + 1);
+      state.poopProgress -= POOP_CFG.THRESHOLD;
+      state.lastPoopAt = nowMs;
+      flash('Uh oh… 💩');
+    }
+  }
+
+  const rates = { hunger:+0.0012, energy:-0.0009, happy:-0.0007, poop:+0.0005 };
+
+  function handleFriendshipDecay(dt){
+    if (state.stage==='egg' || state.stage==='gone') return;
+    let decay = 0.0004;
+    const sinceInteractReal = (Date.now() - (state.lastInteract||Date.now()))/1000;
+    const neglect = sinceInteractReal >= scaleSeconds(MIN(45));
+    if (neglect) decay += 0.0015;
+    if (state.happy < 30 || state.hunger > 80 || state.energy < 20) decay += 0.001;
+    state.friend = Math.max(0, state.friend - decay*dt);
+  }
+
+  function tick(){
+    if (state.dead) return;
+
+    maybeProgressStages();
+    checkAdultGoHome();
+
+    const now=Date.now();
+    const dtReal=(now - state.last)/1000; state.last=now;
+    const dt=dtReal * TIME_SCALE;
+
+    if (state.stage==='egg' || state.stage==='gone'){ render(); return; }
+
+    if (state.sleeping){
+      state.energy = clamp(state.energy + SLEEP_CFG.energyGain*dt);
+      state.hunger = clamp(state.hunger + SLEEP_CFG.hungerGain*dt);
+      state.happy  = clamp(state.happy  + SLEEP_CFG.happyGain*dt);
+      const sleptFor=(now - state.sleepStart)/1000;
+      if (state.energy>=SLEEP_CFG.WAKE_ENERGY || state.hunger>=SLEEP_CFG.WAKE_HUNGER_MAX || sleptFor>=scaleSeconds(SLEEP_CFG.MAX_DURATION_S)){
+        wakeUp('Cukup rehat! 😊');
+      }
+    } else {
+      state.hunger = clamp(state.hunger + rates.hunger*dt);
+      state.energy = clamp(state.energy + rates.energy*dt);
+      state.happy  = clamp(state.happy  + rates.happy*dt);
+
+      if (state.hunger>80) state.happy = clamp(state.happy - 0.02*dt*(state.hunger-80));
+      if (state.energy<20) state.happy = clamp(state.happy - 0.03*dt*(20-state.energy));
+      if (state.poop>=5)   state.happy = clamp(state.happy - 0.03*dt*(state.poop-4));
+
+      if (state.energy<=SLEEP_CFG.AUTO_ENERGY_MAX && state.hunger<SLEEP_CFG.AUTO_HUNGER_MAX) startSleep('Auto sleep… 😴');
+    }
+
+    addPoopProgress((POOP_CFG.PASSIVE_PER_MIN/60) * dt);
+    maybeSpawnPoop(now);
+
+    state.danger = state.danger || {hunger:0, energy:0, happy:0};
+    state.danger.hunger = (state.hunger >= DANGER.HUNGER) ? (state.danger.hunger + dt) : 0;
+    state.danger.energy = (state.energy <= DANGER.ENERGY) ? (state.danger.energy + dt) : 0;
+    state.danger.happy  = (state.happy  <= DANGER.HAPPY ) ? (state.danger.happy  + dt) : 0;
+
+    handleFriendshipDecay(dt);
+
+    if (checkDeath()) return;
+    render(); save();
+  }
+
+  function checkDeath(){
+    if (state.dead) return true;
+    const overGrace =
+      (state.danger?.hunger || 0) >= DANGER.GRACE_S ||
+      (state.danger?.energy || 0) >= DANGER.GRACE_S ||
+      (state.danger?.happy  || 0) >= DANGER.GRACE_S;
+
+    if (overGrace){
+      state.dead=true; state.sleeping=false;
+      state.hunger = Math.max(state.hunger, 100);
+      state.energy = Math.min(state.energy, 0);
+      state.happy  = Math.min(state.happy,  0);
+      flash('Your pet has passed away… 💔'); setButtonsDisabled(true); save(); render(); return true;
+    }
+    return false;
+  }
+
+  function flash(msg){ el.status.textContent = msg; }
+  function refuse(btn,msg){ flash(msg); btn.classList.remove('shake'); void btn.offsetWidth; btn.classList.add('shake'); }
+
+  function startSleep(origin=''){ if (state.dead||state.sleeping) return; state.sleeping=true; state.sleepStart=Date.now(); flash(origin||'Tidur… 😴'); markInteract(); render(); save(); }
+  function wakeUp(reason=''){ if (!state.sleeping) return; state.sleeping=false; flash(reason||'Bangun! ✨'); render(); save(); }
+
+  function canFeed(){ if (state.dead) return ['Dah tiada… 💔',false];
+    if (state.sleeping) return ['Tengah tidur. Shhh… 😴',false];
+    if (state.hunger<=LIMITS.FEED_MIN_HUNGER) return ['Taknak. Dah kenyang. 🙅🍗',false];
+    return ['',true];
+  }
+  function canSnack(){ if (state.dead) return ['Dah tiada… 💔',false];
+    if (state.sleeping) return ['Tengah tidur. Shhh… 😴',false];
+    if (state.hunger<=5) return ['Perut betul-betul kenyang. 🙅🍪',false];
+    return ['',true];
+  }
+  function canPlay(){ if (state.dead) return ['Dah tiada… 💔',false];
+    if (state.sleeping) return ['Tengah tidur. Nanti dulu. 😴',false];
+    if (state.energy<LIMITS.PLAY_MIN_ENERGY) return ['Tak larat. Letih. 🥱',false];
+    if (state.hunger>LIMITS.PLAY_MAX_HUNGER) return ['Perut kosong. Bagi makan dulu. 😿',false];
+    if (state.happy>=LIMITS.PLAY_MAX_HAPPY) return ['Dah cukup happy. 😌',false];
+    return ['',true];
+  }
+  function canPet(){ if (state.dead) return ['Dah tiada… 💔',false];
+    if (state.sleeping) return ['Tengah tidur. Nanti dulu. 😴',false];
+    return ['',true];
+  }
+  function canSleep(){ if (state.dead) return ['Dah tiada… 💔',false];
+    if (state.sleeping) return ['Dah pun tidur. 😴',false];
+    if (state.energy>=LIMITS.SLEEP_MAX_ENERGY) return ['Tak mengantuk lagi. 🙂',false];
+    if (state.hunger>=LIMITS.SLEEP_MAX_HUNGER) return ['Lapar sangat nak tidur. 😵',false];
+    return ['',true];
+  }
+  function canClean(){ if (state.dead) return ['Dah tiada… 💔',false];
+    if (state.sleeping) return ['Tengah tidur. Nanti dulu. 😴',false];
+    if (state.poop<LIMITS.CLEAN_MIN_POOP) return ['Dah bersih. 👍',false];
+    return ['',true];
+  }
+
+  function askStay(){
+    if (state.stage!=='adult' || !state.homePendingUntil) return refuse(el.askStayBtn, 'Tiada keperluan sekarang.');
+    if (state.friend < 700) return refuse(el.askStayBtn, 'Perlu Best Pals (≥700).');
+    state.homePendingUntil = null;
+    state.leaveAt = Date.now() + scaleSeconds(DAY(1))*1000;
+    flash('Okay, I’ll stay a bit longer. 💞'); render(); save();
+  }
+
+  function sendHome(){
+    if (state.stage!=='adult') return refuse(el.sendHomeBtn, 'Hanya untuk Adult.');
+    state.stage='gone';
+    flash('You sent your pal home. 👋');
+    setButtonsDisabled(true);
+    save(); render();
+  }
+
+  function resetPetWindow(){ state.petWindowStart = Date.now(); state.petsThisWindow = 0; }
+  function ensurePetWindow(){ if (!state.petWindowStart) return resetPetWindow(); const passed=(Date.now()-state.petWindowStart)/1000; if (passed>=scaleSeconds(PET_CFG.WINDOW)) resetPetWindow(); }
+
+  function feed(){ const [m,ok]=canFeed(); if(!ok) return refuse(el.feedBtn,m);
+    state.hunger = clamp(state.hunger - 25); state.happy = clamp(state.happy + 5);
+    addPoopProgress(POOP_CFG.FEED_PROGRESS);
+    state.friend += 6; markInteract(); flash('Nyum nyum! 🍗'); render(); save();
+  }
+  function snack(){ const [m,ok]=canSnack(); if(!ok) return refuse(el.snackBtn,m);
+    state.hunger = clamp(state.hunger - 12); state.happy = clamp(state.happy + 10);
+    const fav = Math.random()<0.5 ? state.favSnack : null; const gain = fav?20:10; state.friend += gain;
+    addPoopProgress(POOP_CFG.SNACK_PROGRESS);
+    markInteract(); flash(fav?Favourite snack! (+${gain} Friendship) 🍪✨:'Sedapnya snack! 🍪'); render(); save();
+  }
+  function play(){ const [m,ok]=canPlay(); if(!ok) return refuse(el.playBtn,m);
+    state.happy = clamp(state.happy + 18); state.energy = clamp(state.energy - 12); state.hunger = clamp(state.hunger + 8);
+    const fav = Math.random()<0.5 ? state.favToy : null; const gain = fav?20:10; state.friend += gain;
+    markInteract(); flash(fav?Favourite toy! (+${gain} Friendship) 🪀✨:'Seronok! 🪀'); render(); save();
+  }
+  function petAction(){ const [m,ok]=canPet(); if(!ok) return refuse(el.petBtn,m);
+    ensurePetWindow();
+    const idx = Math.min(state.petsThisWindow, PET_CFG.FRIEND_REWARDS.length-1);
+    const friendGain = (state.petsThisWindow < PET_CFG.FRIEND_REWARDS.length) ? PET_CFG.FRIEND_REWARDS[idx] : 0;
+    const happyGain  = (state.petsThisWindow < PET_CFG.HAPPY_REWARDS.length)  ? PET_CFG.HAPPY_REWARDS[idx]  : 1;
+    state.happy = clamp(state.happy + happyGain);
+    if (friendGain>0){ state.friend += friendGain; flash(Pat pat. 🤚💖 (+${friendGain} Friendship)); }
+    else { flash(PET_CFG.AFTER_MSG); }
+    state.petsThisWindow += 1;
+    markInteract(); render(); save();
+  }
+  function sleepAction(){ const [m,ok]=canSleep(); if(!ok) return refuse(el.sleepBtn,m); startSleep('Tidur… 😴'); markInteract(); }
+  function clean(){ const [m,ok]=canClean(); if(!ok) return refuse(el.cleanBtn,m);
+    const before=state.poop; state.poop=Math.max(0, state.poop-3);
+    const cleaned = before - state.poop;
+    if (cleaned>0){
+      state.happy = clamp(state.happy + CLEAN_REWARD.happy*cleaned);
+      state.energy = clamp(state.energy + CLEAN_REWARD.energy*cleaned);
+      state.friend += CLEAN_REWARD.friend*cleaned;
+      flash(Bersih! ✨ (+${CLEAN_REWARD.happy*cleaned} Happy, +${CLEAN_REWARD.friend*cleaned} Friendship));
+    } else {
+      flash('Dah bersih 👍');
+    }
+    markInteract(); render(); save();
+  }
+
+  // Reset ke Gen 1 (tanpa naik generasi)
+  function resetAll(){
+    state = {
+      ...DEFAULT,
+      gen: 1,
+      eggStart: Date.now(),
+      stageStart: Date.now(),
+      last: Date.now()
+    };
+    flash('New Game! 🥚 Hatching in 60s…');
+    setButtonsDisabled(false);
+    render(); save();
+    scheduleEggHatch();
+  }
+
+  async function hardReset(){
+    try{
+      localStorage.removeItem(LS_KEYS.SAVE);
+      localStorage.removeItem(LS_KEYS.PREV_GENDER);
+      localStorage.setItem(LS_KEYS.VERSION, APP_VERSION);
+    }catch{}
+    if (window.caches && caches.keys){
+      try{
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      }catch{}
+    }
+    location.reload();
+  }
+
+  function render(){
+    el.card.classList.toggle('dead', !!state.dead);
+    el.hungerVal.textContent = Math.round(state.hunger);
+    el.energyVal.textContent = Math.round(state.energy);
+    el.happyVal.textContent  = Math.round(state.happy);
+
+    const meterColor=(wrap,v,isH)=>{ wrap.classList.remove('warn','danger'); if(state.dead) return;
+      if(isH){ if(v>70) wrap.classList.add('danger'); else if(v>50) wrap.classList.add('warn'); }
+      else{ if(v<30) wrap.classList.add('danger'); else if(v<50) wrap.classList.add('warn'); } };
+    el.hungerMeter.style.width = state.hunger+'%';
+    el.energyMeter.style.width = state.energy+'%';
+    el.happyMeter.style.width  = state.happy+'%';
+    meterColor(el.hungerWrap,state.hunger,true);
+    meterColor(el.energyWrap,state.energy,false);
+    meterColor(el.happyWrap,state.happy,false);
+
+    let mood='😺';
+    if (state.dead) mood='💀';
+    else if (state.stage==='egg') mood='🥚';
+    else if (state.poop >= 1) mood='💩';
+    else if (state.sleeping) mood='😴';
+    else {
+      if (state.happy>70 && state.hunger<40 && state.energy>50) mood='😸';
+      if (state.hunger>80) mood='😿';
+      if (state.energy<25) mood='🥱';
+      if (state.happy<25)  mood='😥';
+    }
+    el.pet.textContent=mood;
+
+    el.stageText.textContent = state.stage.charAt(0).toUpperCase()+state.stage.slice(1);
+    if (state.stage === 'egg') { el.genderText.textContent = '-'; el.colorText.textContent  = '-'; }
+    else { el.genderText.textContent = state.gender || '-'; el.colorText.textContent  = state.color  || '-'; }
+    el.genText.textContent = state.gen;
+    el.friendVal.textContent = Math.round(state.friend);
+    el.friendLevel.textContent = friendLevelName(state.friend);
+    el.favSnack.textContent = state.favSnack || '?';
+    el.favToy.textContent = state.favToy || '?';
+
+    if (state.stage==='egg'){
+      const left = scaleSeconds(DUR.EGG_HATCH)*1000 - (Date.now()-state.eggStart);
+      el.nextEvent.textContent = 'Hatch in '+secLeftStr(left);
+      el.status.textContent = 'Egg: hatching in '+secLeftStr(left)+'…';
+    } else if (['baby','child','teen'].includes(state.stage)){
+      const dur=stageDurationSec(state.stage), left = scaleSeconds(dur)*1000 - (Date.now()-state.stageStart);
+      el.nextEvent.textContent = Grow to ${state.stage==='baby'?'Child':state.stage==='child'?'Teen':'Adult'} in ${secLeftStr(left)};
+    } else if (state.stage==='adult'){
+      if (state.homePendingUntil){ const left=state.homePendingUntil-Date.now(); el.nextEvent.textContent=Going home in ${secLeftStr(left)}; }
+      else if (state.leaveAt){ const left=state.leaveAt-Date.now(); el.nextEvent.textContent=May go home in ${secLeftStr(left)}; }
+      else el.nextEvent.textContent='Staying with you ❤️';
+    } else if (state.stage==='gone'){ el.nextEvent.textContent='Gone home. Start new egg with Reset.'; }
+    else el.nextEvent.textContent='-';
+
+    el.sendHomeBtn.disabled = !(state.stage==='adult' && !state.dead);
+    el.askStayBtn.disabled  = !(state.stage==='adult' && state.homePendingUntil && state.friend>=700);
+
+    if (state.dead){ el.status.textContent='Your pet has passed away. Tekan "Reset" untuk generasi baru.'; setButtonsDisabled(true); el.resetBtn.disabled=false; }
+    else if (state.stage==='gone'){ el.status.textContent='Your pal went home. Tekan "Reset" untuk generasi baru.'; setButtonsDisabled(true); el.resetBtn.disabled=false; }
+    else if (!state.sleeping && !['egg','gone'].includes(state.stage)){ el.status.textContent ||= Poop: ${Math.round(state.poop)} • Jaga baik-baik ya!; setButtonsDisabled(false); }
+  }
+
+  el.feedBtn.addEventListener('click', feed);
+  el.snackBtn.addEventListener('click', snack);
+  el.playBtn.addEventListener('click', play);
+  el.petBtn.addEventListener('click', petAction);
+  el.sleepBtn.addEventListener('click', sleepAction);
+  el.cleanBtn.addEventListener('click', clean);
+  el.sendHomeBtn.addEventListener('click', sendHome);
+  el.askStayBtn.addEventListener('click', askStay);
+  el.resetBtn.addEventListener('click', resetAll);
+  el.hardResetBtn.addEventListener('click', hardReset);
+
+  document.addEventListener('keydown',(e)=>{
+    const k=e.key.toLowerCase();
+    if (k==='f') feed();
+    if (k==='n') snack();
+    if (k==='p') play();
+    if (k==='t') petAction();
+    if (k==='s') sleepAction();
+  });
+
+  window.addEventListener('beforeunload', ()=>{ try{ localStorage.setItem(LS_KEYS.SAVE, JSON.stringify(state)); }catch{} });
+
+  setInterval(()=>{ el.clock.textContent=new Date().toLocaleString(); },1000);
+
+  if (state.stage === 'egg') {
+    const total = scaleSeconds(DUR.EGG_HATCH) * 1000;
+    if (!state.eggStart || isNaN(state.eggStart)) state.eggStart = Date.now();
+    const diff = Date.now() - state.eggStart;
+    if (Math.abs(diff) > 2*24*3600*1000) { state.eggStart = Date.now(); save(); }
+  }
+
+  render();
+  if (!state || !state.stage || state.stage==='gone') {
+    startEgg();
+  } else {
+    flash('Welcome back! 👋');
+    save(); render();
+  }
+
+  (function ensureEggHatch(){
+    if (state.stage === 'egg') {
+      const total = scaleSeconds(DUR.EGG_HATCH) * 1000;
+      const left = total - (Date.now() - state.eggStart);
+      if (left <= 0) hatchEgg(); else scheduleEggHatch();
+    }
+  })();
+
+  setInterval(tick, 1000);
+})();
+</script>
+</body>
+</html>
